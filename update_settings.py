@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 import pytz
 
+
 def update_settings(project_dir):
     """
     Updates the settings.py file of a Django project to include the current TIME_ZONE.
@@ -16,7 +17,7 @@ def update_settings(project_dir):
         return
 
     # Get the current timezone
-    current_time_zone = datetime.now(pytz.timezone('UTC')).astimezone().tzinfo.zone
+    current_time_zone = datetime.now(pytz.timezone("UTC")).astimezone().tzinfo.zone
 
     # Placeholder for additional settings
     additional_settings = """
@@ -42,6 +43,7 @@ def update_settings(project_dir):
         print(f"Updated TIME_ZONE to '{current_time_zone}' in {settings_file}")
     except Exception as e:
         print(f"Error updating settings.py: {e}")
+
 
 # Example usage
 if __name__ == "__main__":
