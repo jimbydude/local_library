@@ -17,6 +17,38 @@ from django.core.exceptions import ImproperlyConfigured
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+def get_env_variable(var_name, cast=None, default=None, required=True):
+    """
+    Fetches an environment variable using `config`. Raises an ImproperlyConfigured
+    exception if the variable is required and not set.
+
+    Args:
+        var_name (str): Name of the environment variable.
+        cast (callable, optional): A function to cast the variable to a specific type (e.g., bool, int).
+        default (any, optional): Default value if the variable is not set.
+        required (bool, optional): Whether the variable is required. Defaults to True.
+
+    Returns:
+        The value of the environment variable or the default value.
+
+    Raises:
+        ImproperlyConfigured: If the variable is required but not set and no default is provided.
+    """
+    value = config(var_name, default=default)
+    
+    # Handle required variables
+    if required and value is None:
+        raise ImproperlyConfigured(f"The {var_name} environment variable is not set and is required.")
+    
+    # Apply cast if provided
+    if cast and value is not None:
+        try:
+            return cast(value)
+        except TypeError:
+            raise ImproperlyConfigured(f"The {var_name} environment variable could not be cast to the required type.")
+    
+    return value
+
 # # Environment variable helper
 # def get_env_variable(var_name):
 #     """Get the environment variable or raise an exception."""
@@ -29,20 +61,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = config('DJANGO_SECRET_KEY', default='unsafe-secret-key')
+SECRET_KEY = get_env_variable('DJANGO_SECRET_KEY', required=True)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DJANGO_DEBUG', cast=bool, default=False)
+DEBUG = get_env_variable('DJANGO_DEBUG', cast=bool, default=False, required=False)
 
 # SECURITY WARNING: define ALLOWED_HOSTS correctly in production!
-ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost').split(',')
-
-# Prevent double printing due to process sub-process reload in django
-if os.environ.get('RUN_MAIN') == 'true':  # Only print in the main process
-    print(f"SECRET_KEY: {config('DJANGO_SECRET_KEY', default=None)}")
-    print(f"DEBUG: {config('DJANGO_DEBUG', cast=bool, default=False)}")
-    print(f"ALLOWED_HOSTS: {config('DJANGO_ALLOWED_HOSTS', default='localhost').split(',')}")
-
+ALLOWED_HOSTS = get_env_variable('DJANGO_ALLOWED_HOSTS', required=True).split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -114,10 +139,10 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'America/Los_Angeles'
-USE_I18N = True
-USE_TZ = True
+LANGUAGE_CODE = get_env_variable('DJANGO_LANGUAGE_CODE', default='en-us')
+TIME_ZONE = get_env_variable('DJANGO_TIME_ZONE', default='America/Los_Angeles')
+USE_I18N = get_env_variable('DJANGO_USE_I18N', cast=bool, default=True)
+USE_TZ = get_env_variable('DJANGO_USE_TZ', cast=bool, default=True)
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
@@ -126,3 +151,16 @@ STATIC_URL = 'static/'
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Prevent double printing due to process sub-process reload in django
+# Only print the evaluated settings in DEBUG mode and main process
+if os.environ.get('RUN_MAIN') == 'true' and DEBUG:
+    print("Evaluated settings:")
+    print(f"SECRET_KEY: {SECRET_KEY}")
+    print(f"DEBUG: {DEBUG}")
+    print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+    print(f"LANGUAGE_CODE: {LANGUAGE_CODE}")
+    print(f"TIME_ZONE: {TIME_ZONE}")
+    print(f"USE_I18N: {USE_I18N}")
+    print(f"USE_TZ: {USE_TZ}")
+
